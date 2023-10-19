@@ -13,12 +13,32 @@ type Point struct {
 	X, Y, Z float64
 }
 
-type Vector struct {
-	X, Y, Z float64
+func (p *Point) RotateX(angle float64) Point {
+	cos := math.Cos(angle)
+	sin := math.Sin(angle)
+	y := p.Y*cos - p.Z*sin
+	z := p.Y*sin + p.Z*cos
+	return Point{p.X, y, z}
 }
 
-func (v Vector) Length() float64 {
-	return math.Sqrt(v.X*v.X + v.Y*v.Y + v.Z*v.Z)
+func (p *Point) RotateY(angle float64) Point {
+	cos := math.Cos(angle)
+	sin := math.Sin(angle)
+	x := p.X*cos - p.Z*sin
+	z := p.X*sin + p.Z*cos
+	return Point{x, p.Y, z}
+}
+
+func (p *Point) RotateZ(angle float64) Point {
+	cos := math.Cos(angle)
+	sin := math.Sin(angle)
+	x := p.X*cos - p.Y*sin
+	y := p.X*sin + p.Y*cos
+	return Point{x, y, p.Z}
+}
+
+func (p *Point) Length() float64 {
+	return math.Sqrt(p.X*p.X + p.Y*p.Y + p.Z*p.Z)
 }
 
 type Particle struct {
@@ -27,7 +47,7 @@ type Particle struct {
 }
 
 type Object interface {
-	Particles(lightvec Vector) []Particle
+	Particles(lightvec *Point) []Particle
 	Tick()
 }
 
@@ -42,26 +62,30 @@ type Donut struct {
 	speed2 float64
 }
 
-func (d *Donut) Particles(lightvec Vector) []Particle {
+func (d *Donut) Particles(lightvec *Point) []Particle {
 	var particles []Particle
 	for theta := 0.0; theta < 2.0*math.Pi; theta += d.dtheta {
 		for phi := 0.0; phi < 2.0*math.Pi; phi += d.dphi {
-			ox := (d.r2 + d.r1*math.Cos(theta)) * math.Cos(phi)
-			oy := d.r1 * math.Sin(theta)
-			oz := (d.r2 + d.r1*math.Cos(theta)) * math.Sin(phi)
+			point := Point{
+				X: d.r2 + d.r1*math.Cos(theta),
+				Y: d.r1 * math.Sin(theta),
+				Z: 0.0,
+			}
+			point = point.RotateY(phi)
+			point = point.RotateX(d.angle1)
+			point = point.RotateZ(d.angle2)
 
-			y := oy*math.Cos(d.angle1) + oz*math.Sin(d.angle1)
-			z := -oy*math.Sin(d.angle1) + oz*math.Cos(d.angle1)
-
-			oy = y
-			oz = z
-
-			x := ox*math.Cos(d.angle2) + oz*math.Sin(d.angle2)
-			y = -ox*math.Sin(d.angle2) + oz*math.Cos(d.angle2)
-			z = oz
+			normal := Point{
+				X: math.Cos(theta),
+				Y: math.Sin(theta),
+				Z: 0.0,
+			}
+			normal = normal.RotateY(phi)
+			normal = normal.RotateX(d.angle1)
+			normal = normal.RotateZ(d.angle2)
 			particles = append(particles, Particle{
-				Position:   Point{x, y, z},
-				Luminosity: 1.0,
+				Position:   point,
+				Luminosity: math.Max(0.0, normal.X*lightvec.X+normal.Y*lightvec.Y+normal.Z*lightvec.Z) / normal.Length(),
 			})
 		}
 	}
@@ -143,10 +167,10 @@ func (s *Screen) Draw() {
 
 func main() {
 	donut := &Donut{
-		dtheta: 0.07,
+		dtheta: 0.02,
 		dphi:   0.02,
-		r1:     1.0,
-		r2:     2.0,
+		r1:     100.0,
+		r2:     200.0,
 		angle1: 0.0,
 		angle2: 0.0,
 		speed1: 0.05,
@@ -158,9 +182,10 @@ func main() {
 	screen := &Screen{
 		Width:  80,
 		Height: 40,
-		K1:     80 * 5 * 3 / (8 * (3.0)),
-		K2:     5.0,
-		Chars:  ".,-~:;=!*#$@",
+		// k1: screen_width*K2*3/(8*(R1+R2));
+		K1:    80 * 500 * 3 / (10 * (300.0)),
+		K2:    500.0,
+		Chars: ".,-~:;=!*#$@",
 	}
 
 	screen.Init()
@@ -172,7 +197,7 @@ func main() {
 			time.Sleep(interval)
 			donut.Tick()
 			screen.Clear()
-			screen.Project(donut.Particles(Vector{0.0, 0.0, 1.0}))
+			screen.Project(donut.Particles(&Point{0.0, 1.0, -1.0}))
 			fmt.Print("\033[H\033[2J")
 			screen.Draw()
 		}
