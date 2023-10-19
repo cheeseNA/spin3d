@@ -73,6 +73,74 @@ func (d *Donut) Tick() {
 	d.angle2 += d.speed2
 }
 
+type Screen struct {
+	Width     int
+	Height    int
+	K1        float64
+	K2        float64
+	Chars     string
+	zbuffer   [][]float64
+	luminance [][]float64
+}
+
+func (s *Screen) Init() {
+	s.zbuffer = make([][]float64, s.Width)
+	s.luminance = make([][]float64, s.Width)
+	for i := range s.zbuffer {
+		s.zbuffer[i] = make([]float64, s.Height)
+		s.luminance[i] = make([]float64, s.Height)
+	}
+}
+
+func (s *Screen) Clear() {
+	for i := range s.zbuffer {
+		for j := range s.zbuffer[i] {
+			s.zbuffer[i][j] = 0.0
+			s.luminance[i][j] = 0.0
+		}
+	}
+}
+
+func (s *Screen) Project(particles []Particle) {
+	for _, particle := range particles {
+		ooz := 1.0 / (particle.Position.Z + s.K2)
+		x := particle.Position.X * ooz * s.K1
+		y := particle.Position.Y * ooz * s.K1
+		sx := int(x) + s.Width/2
+		sy := int(y/2) + s.Height/2
+		if sx < 0 || sx >= s.Width || sy < 0 || sy >= s.Height {
+			continue
+		}
+		if particle.Luminosity <= 0.0 {
+			continue
+		}
+
+		// bigger ooz means closer to the screen
+		if ooz > s.zbuffer[sx][sy] {
+			s.zbuffer[sx][sy] = ooz
+			s.luminance[sx][sy] = particle.Luminosity
+		}
+	}
+}
+
+func (s *Screen) Draw() {
+	for j := 0; j < s.Height; j++ {
+		for i := 0; i < s.Width; i++ {
+			luminance := s.luminance[i][j]
+			if luminance <= 0.0 {
+				fmt.Print(" ")
+			} else {
+				index := int(luminance * float64(len(s.Chars)))
+				if index >= len(s.Chars) {
+					index = len(s.Chars) - 1
+				}
+				fmt.Print(string(s.Chars[index]))
+			}
+		}
+		fmt.Println()
+	}
+}
+
 func main() {
 	donut := &Donut{
 		dtheta: 0.07,
@@ -87,15 +155,26 @@ func main() {
 
 	donut.Tick()
 
-	interval := 1 * time.Second
-	counter := 1.0
-	step := 1.0
+	screen := &Screen{
+		Width:  80,
+		Height: 40,
+		K1:     80 * 5 * 3 / (8 * (3.0)),
+		K2:     5.0,
+		Chars:  ".,-~:;=!*#$@",
+	}
+
+	screen.Init()
+
+	interval := 50 * time.Millisecond
 
 	go func() {
 		for {
 			time.Sleep(interval)
-			fmt.Println(counter)
-			counter += step
+			donut.Tick()
+			screen.Clear()
+			screen.Project(donut.Particles(Vector{0.0, 0.0, 1.0}))
+			fmt.Print("\033[H\033[2J")
+			screen.Draw()
 		}
 	}()
 
@@ -109,7 +188,7 @@ func main() {
 				fmt.Println("Invalid input.")
 				continue
 			}
-			step = floatInput
+			fmt.Println("Input:", floatInput)
 		}
 	}()
 
