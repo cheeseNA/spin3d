@@ -13,13 +13,21 @@ type Point struct {
 	X, Y, Z float64
 }
 
+type Vector struct {
+	X, Y, Z float64
+}
+
+func (v Vector) Length() float64 {
+	return math.Sqrt(v.X*v.X + v.Y*v.Y + v.Z*v.Z)
+}
+
 type Particle struct {
 	Position   Point
 	Luminosity float64
 }
 
 type Object interface {
-	Particles(lightvec Point) []Particle
+	Particles(lightvec Vector) []Particle
 	Tick()
 }
 
@@ -34,7 +42,7 @@ type Donut struct {
 	speed2 float64
 }
 
-func (d *Donut) Particles(lightvec Point) []Particle {
+func (d *Donut) Particles(lightvec Vector) []Particle {
 	var particles []Particle
 	for theta := 0.0; theta < 2.0*math.Pi; theta += d.dtheta {
 		for phi := 0.0; phi < 2.0*math.Pi; phi += d.dphi {
@@ -73,8 +81,8 @@ func main() {
 		r2:     2.0,
 		angle1: 0.0,
 		angle2: 0.0,
-		speed1: 0.01,
-		speed2: 0.01,
+		speed1: 0.05,
+		speed2: 0.03,
 	}
 
 	donut.Tick()
