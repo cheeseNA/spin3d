@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"math"
 	"os"
-	"strconv"
+	"strings"
 	"time"
 )
 
@@ -135,9 +135,9 @@ func (s *Screen) Project(particles []Particle) {
 		if sx < 0 || sx >= s.Width || sy < 0 || sy >= s.Height {
 			continue
 		}
-		if particle.Luminosity <= 0.0 {
-			continue
-		}
+		//if particle.Luminosity <= 0.0 {
+		//	continue
+		//}
 
 		// bigger ooz means closer to the screen
 		if ooz > s.zbuffer[sx][sy] {
@@ -180,25 +180,32 @@ func main() {
 	donut.Tick()
 
 	screen := &Screen{
-		Width:  80,
-		Height: 40,
+		Width:  300,
+		Height: 60,
 		// k1: screen_width*K2*3/(8*(R1+R2));
 		K1:    80 * 500 * 3 / (10 * (300.0)),
-		K2:    500.0,
+		K2:    400.0,
 		Chars: ".,-~:;=!*#$@",
 	}
 
+	luminance := Point{0.0, 1.0, -1.0}
+
 	screen.Init()
 
-	interval := 50 * time.Millisecond
+	interval := 100 * time.Millisecond
+
+	stop := false
 
 	go func() {
 		for {
 			time.Sleep(interval)
+			if stop {
+				continue
+			}
 			donut.Tick()
 			screen.Clear()
-			screen.Project(donut.Particles(&Point{0.0, 1.0, -1.0}))
-			fmt.Print("\033[H\033[2J")
+			screen.Project(donut.Particles(&luminance))
+			fmt.Print("\033[H")
 			screen.Draw()
 		}
 	}()
@@ -207,13 +214,53 @@ func main() {
 		scanner := bufio.NewScanner(os.Stdin)
 		for scanner.Scan() {
 			input := scanner.Text()
-			// accept int and float
-			floatInput, err := strconv.ParseFloat(input, 64)
-			if err != nil {
-				fmt.Println("Invalid input.")
-				continue
+			args := strings.Split(input, " ")
+			switch args[0] {
+			case "s1":
+				donut.speed1 = 0.0
+				_, err := fmt.Sscanf(args[1], "%f", &donut.speed1)
+				if err != nil {
+					fmt.Println(err)
+				}
+			case "s2":
+				donut.speed2 = 0.0
+				_, err := fmt.Sscanf(args[1], "%f", &donut.speed2)
+				if err != nil {
+					fmt.Println(err)
+				}
+			case "k1":
+				screen.K1 = 0.0
+				_, err := fmt.Sscanf(args[1], "%f", &screen.K1)
+				if err != nil {
+					fmt.Println(err)
+				}
+			case "k2":
+				screen.K2 = 0.0
+				_, err := fmt.Sscanf(args[1], "%f", &screen.K2)
+				if err != nil {
+					fmt.Println(err)
+				}
+			case "l":
+				luminance.X = 0.0
+				luminance.Y = 0.0
+				luminance.Z = 0.0
+				_, err := fmt.Sscanf(args[1], "%f", &luminance.X)
+				if err != nil {
+					fmt.Println(err)
+				}
+				_, err = fmt.Sscanf(args[2], "%f", &luminance.Y)
+				if err != nil {
+					fmt.Println(err)
+				}
+				_, err = fmt.Sscanf(args[3], "%f", &luminance.Z)
+				if err != nil {
+					fmt.Println(err)
+				}
+			case "stop":
+				stop = true
+			case "start":
+				stop = false
 			}
-			fmt.Println("Input:", floatInput)
 		}
 	}()
 
