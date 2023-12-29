@@ -85,7 +85,7 @@ func (d *Donut) Particles(lightvec *Point) []Particle {
 			normal = normal.RotateZ(d.angle2)
 			particles = append(particles, Particle{
 				Position:   point,
-				Luminosity: math.Max(0.0, normal.X*lightvec.X+normal.Y*lightvec.Y+normal.Z*lightvec.Z) / normal.Length(),
+				Luminosity: math.Max(0.0, normal.X*lightvec.X+normal.Y*lightvec.Y+normal.Z*lightvec.Z) / lightvec.Length(),
 			})
 		}
 	}
@@ -169,7 +169,7 @@ func main() {
 	donut := &Donut{
 		dtheta: 0.02,
 		dphi:   0.02,
-		r1:     100.0,
+		r1:     75.0,
 		r2:     200.0,
 		angle1: 0.0,
 		angle2: 0.0,
@@ -181,7 +181,7 @@ func main() {
 
 	screen := &Screen{
 		Width:  300,
-		Height: 60,
+		Height: 100,
 		// k1: screen_width*K2*3/(8*(R1+R2));
 		K1:    80 * 500 * 3 / (10 * (300.0)),
 		K2:    400.0,
