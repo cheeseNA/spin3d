@@ -196,6 +196,8 @@ func main() {
 
 	stop := false
 
+	fmt.Println("\033[?25l")
+
 	go func() {
 		for {
 			time.Sleep(interval)
@@ -205,7 +207,7 @@ func main() {
 			donut.Tick()
 			screen.Clear()
 			screen.Project(donut.Particles(&luminance))
-			fmt.Print("\033[H")
+			fmt.Print("\033[H\033[J")
 			screen.Draw()
 		}
 	}()
