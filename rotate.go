@@ -98,13 +98,14 @@ func (d *Donut) Tick() {
 }
 
 type Screen struct {
-	Width     int
-	Height    int
-	K1        float64
-	K2        float64
-	Chars     string
-	zbuffer   [][]float64
-	luminance [][]float64
+	Width        int
+	Height       int
+	K1           float64
+	K2           float64
+	Chars        string
+	zbuffer      [][]float64
+	luminance    [][]float64
+	stringBuffer []string // for performance
 }
 
 func (s *Screen) Init() {
@@ -114,6 +115,7 @@ func (s *Screen) Init() {
 		s.zbuffer[i] = make([]float64, s.Height)
 		s.luminance[i] = make([]float64, s.Height)
 	}
+	s.stringBuffer = make([]string, s.Height)
 }
 
 func (s *Screen) Clear() {
@@ -147,21 +149,27 @@ func (s *Screen) Project(particles []Particle) {
 	}
 }
 
-func (s *Screen) Draw() {
+func (s *Screen) DrawToBuffer() {
 	for j := 0; j < s.Height; j++ {
+		s.stringBuffer[j] = ""
 		for i := 0; i < s.Width; i++ {
 			luminance := s.luminance[i][j]
 			if luminance <= 0.0 {
-				fmt.Print(" ")
+				s.stringBuffer[j] += " "
 			} else {
 				index := int(luminance * float64(len(s.Chars)))
 				if index >= len(s.Chars) {
 					index = len(s.Chars) - 1
 				}
-				fmt.Print(string(s.Chars[index]))
+				s.stringBuffer[j] += string(s.Chars[index])
 			}
 		}
-		fmt.Println()
+	}
+}
+
+func (s *Screen) Draw() {
+	for j := 0; j < s.Height; j++ {
+		fmt.Println(s.stringBuffer[j])
 	}
 }
 
@@ -207,6 +215,7 @@ func main() {
 			donut.Tick()
 			screen.Clear()
 			screen.Project(donut.Particles(&luminance))
+			screen.DrawToBuffer()
 			fmt.Print("\033[H\033[J")
 			screen.Draw()
 		}
